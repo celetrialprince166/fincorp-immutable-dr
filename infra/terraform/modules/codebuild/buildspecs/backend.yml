@@ -91,15 +91,38 @@ phases:
         if [ "$SCAN_STATUS" != "COMPLETE" ]; then
           echo "Scan did not COMPLETE within timeout (last=$SCAN_STATUS)"; exit 1
         fi
+      # The human-readable summary (echoed for evidence). NOTE: ECR basic scanning
+      # frequently leaves imageScanFindingsSummary.findingSeverityCounts EMPTY/null
+      # even when the per-finding list contains HIGH/CRITICAL items — so the GATE
+      # must NOT trust the summary. We echo it for context only.
       - |
         COUNTS="$(aws ecr describe-image-scan-findings \
           --repository-name "$ECR_REPO" --image-id imageTag="$SHA" \
           --region "$AWS_DEFAULT_REGION" \
-          --query 'imageScanFindingsSummary.findingSeverityCounts' --output json)"
-      - echo "Severity counts -> $COUNTS"
-      # >>> THRESHOLD ENFORCED HERE: High + Critical must be ZERO <<<
+          --query 'imageScanFindingsSummary.findingSeverityCounts' --output json || echo null)"
+      - echo "findingSeverityCounts (summary, informational) -> $COUNTS"
+      # >>> THRESHOLD ENFORCED HERE — count HIGH+CRITICAL from the AUTHORITATIVE
+      #     per-finding list, paging through all results. High + Critical must be ZERO. <<<
       - |
-        BLOCKERS="$(echo "$COUNTS" | jq '((.CRITICAL // 0) + (.HIGH // 0))')"
+        BLOCKERS=0
+        NEXT=""
+        while : ; do
+          if [ -n "$NEXT" ]; then
+            PAGE="$(aws ecr describe-image-scan-findings \
+              --repository-name "$ECR_REPO" --image-id imageTag="$SHA" \
+              --region "$AWS_DEFAULT_REGION" --max-results 1000 --next-token "$NEXT" \
+              --output json)"
+          else
+            PAGE="$(aws ecr describe-image-scan-findings \
+              --repository-name "$ECR_REPO" --image-id imageTag="$SHA" \
+              --region "$AWS_DEFAULT_REGION" --max-results 1000 --output json)"
+          fi
+          N="$(echo "$PAGE" | jq '[.imageScanFindings.findings[]? | select(.severity=="HIGH" or .severity=="CRITICAL")] | length')"
+          BLOCKERS=$((BLOCKERS + N))
+          NEXT="$(echo "$PAGE" | jq -r '.nextToken // empty')"
+          [ -z "$NEXT" ] && break
+        done
+        echo "HIGH/CRITICAL findings counted from per-finding list = $BLOCKERS"
         if [ "$BLOCKERS" -gt 0 ]; then
           echo "GATE FAILED: $BLOCKERS HIGH/CRITICAL finding(s) in ${ECR_REPO}:${SHA}. Blocking the pipeline."
           exit 1
