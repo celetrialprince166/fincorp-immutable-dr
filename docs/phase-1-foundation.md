@@ -282,7 +282,12 @@ aws ec2 describe-security-groups \
 Both ingress (5432) and egress are scoped to `10.0.0.0/16` — no `0.0.0.0/0`
 anywhere. The VPC `vpc-0f71b42bfac9d3650` has no IGW or NAT.
 
-![VPC subnets and RDS security group](assets/p1-common-vpc-subnets-sg-04.png)
+![VPC subnets in the FinCorp VPC](assets/p1-common-vpc-subnets-sg-04.png)
+
+The RDS security group's only inbound rule: PostgreSQL 5432 sourced from
+`10.0.0.0/16` (the VPC CIDR) — never `0.0.0.0/0`.
+
+![RDS security group inbound rule — 5432 from the VPC CIDR only](assets/p1-common-rds-sg-inbound-05.png)
 
 ### Remote state — versioning on the bucket
 
