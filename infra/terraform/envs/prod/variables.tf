@@ -22,6 +22,25 @@ variable "environment" {
   default     = "prod"
 }
 
+# --- Pipeline source (Phase 2) -------------------------------------------
+variable "github_owner" {
+  description = "GitHub org/user that owns the source repo."
+  type        = string
+  default     = "celetrialprince166"
+}
+
+variable "github_repo" {
+  description = "GitHub repository name (without owner)."
+  type        = string
+  default     = "fincorp-immutable-dr"
+}
+
+variable "github_branch" {
+  description = "Branch the pipeline tracks."
+  type        = string
+  default     = "master"
+}
+
 # --- Network (Phase 1) ---------------------------------------------------
 variable "vpc_cidr" {
   description = "CIDR block for the primary-region VPC (hosts the RDS data subnets)."

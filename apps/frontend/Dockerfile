@@ -1,18 +1,28 @@
 # Stage 1: Build Angular app
-FROM node:22-alpine AS builder
+# Base images via the ECR Public mirror (public.ecr.aws) to dodge Docker Hub
+# anonymous pull rate limits (HTTP 429) inside CodeBuild.
+FROM public.ecr.aws/docker/library/node:22-alpine AS builder
 
 WORKDIR /app
 
 # Install dependencies first for better layer caching
 COPY package.json package-lock.json ./
-RUN npm ci
+
+# --- CodeArtifact proxy (securing-supply-chain control #1) -------------------
+# CI passes a pre-rendered .npmrc as a BuildKit secret so npm pulls EVERY package
+# through CodeArtifact (provenance + curation), never directly from npmjs. The
+# secret mount keeps the short-lived auth token out of the image layers/history.
+# Locally (no secret) npm falls back to the default public registry, so the
+# Dockerfile still builds on a dev laptop.
+RUN --mount=type=secret,id=npmrc,target=/root/.npmrc,required=false \
+    npm ci
 
 # Copy full application code and build
 COPY . .
 RUN npx ng build --configuration production
 
 # Stage 2: Serve with Nginx
-FROM nginx:1.27-alpine AS runtime
+FROM public.ecr.aws/docker/library/nginx:1.27-alpine AS runtime
 
 # Backend upstream, resolved by envsubst at container start.
 # Override BACKEND_HOST per environment (compose: "backend", ECS: "backend.pongapp.local").

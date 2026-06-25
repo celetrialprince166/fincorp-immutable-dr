@@ -1,0 +1,114 @@
+version: 0.2
+
+# ===========================================================================
+# FinCorp secure build — FRONTEND tier (Angular/npm)
+# securing-supply-chain controls, all four enforced here:
+#   1. CodeArtifact is the ONLY dependency source (npm token + registry below).
+#   2. ECR IMMUTABLE tags  -> we tag by git short SHA, never :latest.
+#   3. Scan-on-push        -> enabled on the repo (Terraform); runs automatically.
+#   4. The gate            -> post_build polls findings and EXITS 1 on HIGH/CRITICAL.
+#
+# Env vars injected by the CodeBuild project (Terraform):
+#   AWS_DEFAULT_REGION, ACCOUNT_ID, ECR_REPO (fincorp-frontend),
+#   CA_DOMAIN, CA_DOMAIN_OWNER, CA_NPM_REPO, APP_DIR (apps/frontend)
+# ===========================================================================
+
+env:
+  shell: bash
+
+phases:
+  pre_build:
+    commands:
+      - set -euo pipefail
+      # --- Resolve the immutable tag: the git short SHA of the source commit ---
+      # CODEBUILD_RESOLVED_SOURCE_VERSION is the full commit SHA from the Source stage.
+      - SHA="$(echo "${CODEBUILD_RESOLVED_SOURCE_VERSION:-$CODEBUILD_BUILD_NUMBER}" | cut -c1-7)"
+      - echo "Image tag (immutable, SHA-based) = $SHA"
+      - REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
+      - IMAGE_URI="${REGISTRY}/${ECR_REPO}:${SHA}"
+
+      # --- Control #1: authenticate npm to CodeArtifact (short-lived token) ----
+      # Pull a 12h token, render an .npmrc that points the default registry at the
+      # CodeArtifact npm repo. EVERY npm install now proxies through CodeArtifact.
+      - echo "Fetching CodeArtifact auth token..."
+      - |
+        CA_TOKEN="$(aws codeartifact get-authorization-token \
+          --domain "$CA_DOMAIN" --domain-owner "$CA_DOMAIN_OWNER" \
+          --query authorizationToken --output text --duration-seconds 43200)"
+      - |
+        CA_NPM_ENDPOINT="$(aws codeartifact get-repository-endpoint \
+          --domain "$CA_DOMAIN" --domain-owner "$CA_DOMAIN_OWNER" \
+          --repository "$CA_NPM_REPO" --format npm \
+          --query repositoryEndpoint --output text)"
+      # Strip scheme for the //host/:_authToken line npm expects.
+      - CA_NPM_HOST="$(echo "$CA_NPM_ENDPOINT" | sed -e 's#^https\?:##')"
+      - |
+        cat > ca.npmrc <<EOF
+        registry=${CA_NPM_ENDPOINT}
+        ${CA_NPM_HOST}:_authToken=${CA_TOKEN}
+        ${CA_NPM_HOST}:always-auth=true
+        EOF
+      - echo "Rendered .npmrc pointing npm at CodeArtifact ($CA_NPM_REPO)."
+
+      # --- Log in to ECR for the push ----------------------------------------
+      - echo "Logging in to ECR ($REGISTRY)..."
+      - aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | docker login --username AWS --password-stdin "$REGISTRY"
+
+  build:
+    commands:
+      - set -euo pipefail
+      - echo "Building frontend image $IMAGE_URI"
+      # DOCKER_BUILDKIT=1 enables --mount=type=secret so the CodeArtifact token is
+      # consumed by `npm ci` but never written into an image layer or history.
+      - |
+        DOCKER_BUILDKIT=1 docker build \
+          --secret id=npmrc,src=ca.npmrc \
+          -t "$IMAGE_URI" \
+          -f "${APP_DIR}/Dockerfile" \
+          "${APP_DIR}"
+      - echo "Pushing $IMAGE_URI (IMMUTABLE repo — this tag can never be overwritten)"
+      - docker push "$IMAGE_URI"
+
+  post_build:
+    commands:
+      - set -euo pipefail
+      # =====================================================================
+      # THE GATE (securing-supply-chain control #4) — non-negotiable.
+      # scan-on-push has already started a scan for this pushed image. Wait for
+      # it, read the severity counts, and FAIL the build if ANY High/Critical.
+      # =====================================================================
+      # Poll scan status directly (the `ecr wait` waiter aborts on the transient
+      # ScanNotFoundException that occurs before scan-on-push registers). Tolerate
+      # PENDING/ScanNotFound by retrying; fail closed on FAILED or timeout.
+      - |
+        echo "Polling ECR scan status for ${ECR_REPO}:${SHA}..."
+        SCAN_STATUS="PENDING"
+        for i in $(seq 1 40); do
+          SCAN_STATUS="$(aws ecr describe-image-scan-findings \
+            --repository-name "$ECR_REPO" --image-id imageTag="$SHA" \
+            --region "$AWS_DEFAULT_REGION" \
+            --query 'imageScanStatus.status' --output text 2>/dev/null || echo PENDING)"
+          echo "  attempt $i: status=$SCAN_STATUS"
+          case "$SCAN_STATUS" in
+            COMPLETE) break;;
+            FAILED) echo "ECR scan FAILED for ${ECR_REPO}:${SHA}"; exit 1;;
+          esac
+          sleep 15
+        done
+        if [ "$SCAN_STATUS" != "COMPLETE" ]; then
+          echo "Scan did not COMPLETE within timeout (last=$SCAN_STATUS)"; exit 1
+        fi
+      - |
+        COUNTS="$(aws ecr describe-image-scan-findings \
+          --repository-name "$ECR_REPO" --image-id imageTag="$SHA" \
+          --region "$AWS_DEFAULT_REGION" \
+          --query 'imageScanFindingsSummary.findingSeverityCounts' --output json)"
+      - echo "Severity counts -> $COUNTS"
+      # >>> THRESHOLD ENFORCED HERE: High + Critical must be ZERO <<<
+      - |
+        BLOCKERS="$(echo "$COUNTS" | jq '((.CRITICAL // 0) + (.HIGH // 0))')"
+        if [ "$BLOCKERS" -gt 0 ]; then
+          echo "GATE FAILED: $BLOCKERS HIGH/CRITICAL finding(s) in ${ECR_REPO}:${SHA}. Blocking the pipeline."
+          exit 1
+        fi
+      - echo "GATE PASSED - no HIGH/CRITICAL findings. Immutable image ${IMAGE_URI} is cleared."

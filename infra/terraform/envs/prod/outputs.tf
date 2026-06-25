@@ -46,3 +46,32 @@ output "codeartifact_pip_repository" {
   description = "pip repo the build pulls from (upstreams to pypi-store -> public:pypi)."
   value       = module.codeartifact.pip_repository_name
 }
+
+# ---------------------------------------------------------------------------
+# Phase 2 outputs — secure pipeline (CodeBuild, CodePipeline, CodeStar).
+# ---------------------------------------------------------------------------
+
+output "pipeline_name" {
+  description = "CodePipeline name (Source -> Build both tiers)."
+  value       = module.codepipeline.pipeline_name
+}
+
+output "codebuild_project_names" {
+  description = "Map of tier -> CodeBuild project name."
+  value       = module.codebuild.project_names
+}
+
+output "pipeline_artifact_bucket" {
+  description = "S3 bucket holding pipeline artifacts."
+  value       = aws_s3_bucket.pipeline_artifacts.bucket
+}
+
+output "github_connection_arn" {
+  description = "CodeStar GitHub connection ARN. PENDING until a human authorizes it in the console (Developer Tools -> Settings -> Connections)."
+  value       = module.codepipeline.connection_arn
+}
+
+output "github_connection_status" {
+  description = "Connection status. Must become AVAILABLE (manual OAuth authorize) before the pipeline can pull source."
+  value       = module.codepipeline.connection_status
+}

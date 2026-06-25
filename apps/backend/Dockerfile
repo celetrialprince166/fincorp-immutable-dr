@@ -1,5 +1,7 @@
 # Stage 1: Build environment
-FROM python:3.12-slim AS builder
+# Base images via the ECR Public mirror (public.ecr.aws) to dodge Docker Hub
+# anonymous pull rate limits (HTTP 429) inside CodeBuild.
+FROM public.ecr.aws/docker/library/python:3.12-slim AS builder
 
 WORKDIR /app
 
@@ -16,13 +18,18 @@ COPY backend/requirements.txt .
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install base requirements plus production specific ones
-RUN pip install --no-cache-dir -r requirements.txt \
+# --- CodeArtifact proxy (securing-supply-chain control #1) -------------------
+# CI passes a pre-rendered pip.conf as a BuildKit secret so pip resolves EVERY
+# package (incl. daphne + dj-database-url) through CodeArtifact's pip repo, never
+# directly from PyPI. The secret mount keeps the short-lived token out of layers.
+# Locally (no secret) pip falls back to public PyPI, so dev laptops still build.
+RUN --mount=type=secret,id=pipconf,target=/etc/pip.conf,required=false \
+    pip install --no-cache-dir -r requirements.txt \
     daphne \
     dj-database-url
 
 # Stage 2: Runtime environment
-FROM python:3.12-slim AS runtime
+FROM public.ecr.aws/docker/library/python:3.12-slim AS runtime
 
 # Set up environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
