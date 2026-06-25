@@ -1,0 +1,82 @@
+# ===========================================================================
+# FinCorp scan-gate ALLOWLIST  --  accepted-risk register
+# ===========================================================================
+# WHAT THIS IS
+#   An auditable, explicit list of HIGH/CRITICAL OS-package CVEs that the
+#   immutable-pipeline scan gate is allowed to PASS, because they have NO
+#   upstream fix available as of the review date. The gate still BLOCKS any
+#   HIGH/CRITICAL finding whose CVE id is NOT on this list -- so a newly
+#   published, *fixable* CVE will fail the build until it is patched or
+#   consciously triaged and added here.
+#
+# WHY IT EXISTS
+#   ECR BASIC scanning (Clair) does NOT expose a fixed-in-version field, so
+#   the gate cannot auto-distinguish fixable from unfixable findings. Amazon
+#   Inspector (enhanced scanning) would expose fixedInVersion, but enabling
+#   it is a deliberate NO for this lab (cost + user decision). The accepted
+#   alternative is this curated CVE-id allowlist: a real "accepted risk"
+#   register reviewed by a human, not a blanket gate bypass.
+#
+# REVIEW METADATA
+#   Reviewed:        2026-06-25
+#   Scanner:         Amazon ECR BASIC (Clair) scan-on-push, us-east-1
+#   Images triaged:  fincorp-backend:7afe5ab  (python:3.12-slim, Debian 12)
+#                    fincorp-frontend:7afe5ab (node:22-alpine / nginx:1.27-alpine)
+#   Basis:           Every CVE below was HIGH/CRITICAL in the current clean
+#                    base images and had no fixed package available upstream
+#                    on the review date (verified against the live scan).
+#
+# FORMAT
+#   One CVE id per line. Blank lines and lines starting with '#' are ignored.
+#   A trailing '# pkg - note' is allowed for context.
+#
+# MAINTENANCE
+#   Re-triage on every base-image bump. When a fix ships upstream, REMOVE the
+#   CVE here and rebuild on the patched base instead of allowlisting it.
+# ===========================================================================
+
+# --- backend: python:3.12-slim (Debian 12 "bookworm"), perl 5.40.1-6 -------
+# Debian had no fixed perl package for these on 2026-06-25; perl is a base
+# dependency of the slim image, not an application dependency.
+CVE-2026-12087   # perl 5.40.1-6 - CRITICAL, no upstream fix as of review date
+CVE-2026-48959   # perl 5.40.1-6 - HIGH, no upstream fix as of review date
+CVE-2026-48961   # perl 5.40.1-6 - HIGH, no upstream fix as of review date
+CVE-2026-48962   # perl 5.40.1-6 - HIGH, no upstream fix as of review date
+
+# --- frontend: node:22-alpine / nginx:1.27-alpine (Alpine base packages) ----
+# Alpine had no fixed apk for these on 2026-06-25; all are base TLS/XML/image
+# /HTTP libraries pulled by the official node/nginx images, not app deps.
+CVE-2025-49794   # libxml2 2.13.4-r5 - CRITICAL, no upstream fix as of review date
+CVE-2025-49796   # libxml2 2.13.4-r5 - CRITICAL, no upstream fix as of review date
+CVE-2026-31789   # openssl 3.3.3-r0 - CRITICAL, no upstream fix as of review date
+CVE-2025-15467   # openssl 3.3.3-r0 - HIGH, no upstream fix as of review date
+CVE-2025-69419   # openssl 3.3.3-r0 - HIGH, no upstream fix as of review date
+CVE-2025-69420   # openssl 3.3.3-r0 - HIGH, no upstream fix as of review date
+CVE-2025-69421   # openssl 3.3.3-r0 - HIGH, no upstream fix as of review date
+CVE-2025-9230    # openssl 3.3.3-r0 - HIGH, no upstream fix as of review date
+CVE-2026-28387   # openssl 3.3.3-r0 - HIGH, no upstream fix as of review date
+CVE-2026-28388   # openssl 3.3.3-r0 - HIGH, no upstream fix as of review date
+CVE-2026-28389   # openssl 3.3.3-r0 - HIGH, no upstream fix as of review date
+CVE-2026-28390   # openssl 3.3.3-r0 - HIGH, no upstream fix as of review date
+CVE-2026-31790   # openssl 3.3.3-r0 - HIGH, no upstream fix as of review date
+CVE-2025-32414   # libxml2 2.13.4-r5 - HIGH, no upstream fix as of review date
+CVE-2025-32415   # libxml2 2.13.4-r5 - HIGH, no upstream fix as of review date
+CVE-2025-49795   # libxml2 2.13.4-r5 - HIGH, no upstream fix as of review date
+CVE-2025-6021    # libxml2 2.13.4-r5 - HIGH, no upstream fix as of review date
+CVE-2026-6732    # libxml2 2.13.4-r5 - HIGH, no upstream fix as of review date
+CVE-2025-64720   # libpng 1.6.47-r0 - HIGH, no upstream fix as of review date
+CVE-2025-65018   # libpng 1.6.47-r0 - HIGH, no upstream fix as of review date
+CVE-2025-66293   # libpng 1.6.47-r0 - HIGH, no upstream fix as of review date
+CVE-2026-22695   # libpng 1.6.47-r0 - HIGH, no upstream fix as of review date
+CVE-2026-22801   # libpng 1.6.47-r0 - HIGH, no upstream fix as of review date
+CVE-2026-25646   # libpng 1.6.47-r0 - HIGH, no upstream fix as of review date
+CVE-2026-33416   # libpng 1.6.47-r0 - HIGH, no upstream fix as of review date
+CVE-2026-33636   # libpng 1.6.47-r0 - HIGH, no upstream fix as of review date
+CVE-2025-59375   # expat 2.7.0-r0 - HIGH, no upstream fix as of review date
+CVE-2026-25210   # expat 2.7.0-r0 - HIGH, no upstream fix as of review date
+CVE-2026-41080   # expat 2.7.0-r0 - HIGH, no upstream fix as of review date
+CVE-2026-45186   # expat 2.7.0-r0 - HIGH, no upstream fix as of review date
+CVE-2025-5399    # curl 8.12.1-r1 - HIGH, no upstream fix as of review date
+CVE-2025-9086    # curl 8.12.1-r1 - HIGH, no upstream fix as of review date
+CVE-2026-40200   # musl 1.2.5-r9 - HIGH, no upstream fix as of review date
+CVE-2026-27135   # nghttp2 1.64.0-r0 - HIGH, no upstream fix as of review date

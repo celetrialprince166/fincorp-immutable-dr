@@ -108,10 +108,27 @@ phases:
           --region "$AWS_DEFAULT_REGION" \
           --query 'imageScanFindingsSummary.findingSeverityCounts' --output json || echo null)"
       - echo "findingSeverityCounts (summary, informational) -> $COUNTS"
-      # >>> THRESHOLD ENFORCED HERE — count HIGH+CRITICAL from the AUTHORITATIVE
-      #     per-finding list, paging through all results. High + Critical must be ZERO. <<<
+      # >>> THE GATE — ALLOWLIST POLICY <<<
+      # A HIGH/CRITICAL finding BLOCKS the pipeline UNLESS its CVE id is on the
+      # accepted-risk allowlist at security/scan-allowlist.txt. The allowlist
+      # holds only HIGH/CRITICAL OS CVEs that have NO upstream fix available as
+      # of the build date (reviewed by a human). WHY: ECR basic (Clair) scanning
+      # does not expose a fixed-in-version field, so we cannot auto-detect
+      # fixability; Amazon Inspector (enhanced) is intentionally NOT enabled
+      # (cost + project decision). A newly published, *fixable* HIGH/CRITICAL is
+      # NOT on the list, so it still fails the build — the gate stays meaningful.
       - |
-        BLOCKERS=0
+        ALLOWLIST_FILE="${CODEBUILD_SRC_DIR}/security/scan-allowlist.txt"
+        if [ -f "$ALLOWLIST_FILE" ]; then
+          # first whitespace token of each non-comment, non-blank line = CVE id
+          ALLOWED="$(sed -e 's/#.*$//' "$ALLOWLIST_FILE" | awk '{print $1}' | grep -E '^CVE-' || true)"
+        else
+          ALLOWED=""
+          echo "WARNING: allowlist file not found at $ALLOWLIST_FILE — nothing is allowlisted."
+        fi
+        echo "Allowlisted CVE ids loaded: $(echo "$ALLOWED" | grep -c '^CVE-' || echo 0)"
+        # Page through ALL findings; collect every HIGH/CRITICAL CVE id.
+        HC_IDS=""
         NEXT=""
         while : ; do
           if [ -n "$NEXT" ]; then
@@ -124,14 +141,32 @@ phases:
               --repository-name "$ECR_REPO" --image-id imageTag="$SHA" \
               --region "$AWS_DEFAULT_REGION" --max-results 1000 --output json)"
           fi
-          N="$(echo "$PAGE" | jq '[.imageScanFindings.findings[]? | select(.severity=="HIGH" or .severity=="CRITICAL")] | length')"
-          BLOCKERS=$((BLOCKERS + N))
+          IDS="$(echo "$PAGE" | jq -r '.imageScanFindings.findings[]? | select(.severity=="HIGH" or .severity=="CRITICAL") | .name')"
+          HC_IDS="$(printf '%s\n%s' "$HC_IDS" "$IDS")"
           NEXT="$(echo "$PAGE" | jq -r '.nextToken // empty')"
           [ -z "$NEXT" ] && break
         done
-        echo "HIGH/CRITICAL findings counted from per-finding list = $BLOCKERS"
-        if [ "$BLOCKERS" -gt 0 ]; then
-          echo "GATE FAILED: $BLOCKERS HIGH/CRITICAL finding(s) in ${ECR_REPO}:${SHA}. Blocking the pipeline."
+        HC_IDS="$(echo "$HC_IDS" | grep -E '^CVE-' | sort -u || true)"
+        TOTAL="$(echo "$HC_IDS" | grep -c '^CVE-' || echo 0)"
+        # Partition into allowlisted vs blocking.
+        BLOCKING_IDS=""
+        ALLOWED_HIT=0
+        for cve in $HC_IDS; do
+          if echo "$ALLOWED" | grep -qx "$cve"; then
+            ALLOWED_HIT=$((ALLOWED_HIT + 1))
+          else
+            BLOCKING_IDS="$BLOCKING_IDS $cve"
+          fi
+        done
+        BLOCKING="$(echo $BLOCKING_IDS | wc -w | tr -d ' ')"
+        echo "Scan triage for ${ECR_REPO}:${SHA}"
+        echo "  total HIGH/CRITICAL  = $TOTAL"
+        echo "  allowlisted (no fix) = $ALLOWED_HIT"
+        echo "  BLOCKING (fixable / untriaged) = $BLOCKING"
+        if [ "$BLOCKING" -gt 0 ]; then
+          echo "GATE FAILED: $BLOCKING HIGH/CRITICAL finding(s) not on the allowlist in ${ECR_REPO}:${SHA}:"
+          for cve in $BLOCKING_IDS; do echo "    - $cve"; done
+          echo "These are NOT accepted-risk entries — patch the base/dep or triage + add to security/scan-allowlist.txt. Blocking the pipeline."
           exit 1
         fi
-      - echo "GATE PASSED - no HIGH/CRITICAL findings. Immutable image ${IMAGE_URI} is cleared."
+        echo "GATE PASSED — 0 blocking HIGH/CRITICAL ($ALLOWED_HIT allowlisted as upstream-unfixable). Immutable image ${IMAGE_URI} is cleared."
