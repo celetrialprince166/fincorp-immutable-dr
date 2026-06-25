@@ -15,8 +15,8 @@ The target architecture (whole lab) is diagrammed in
 | # | Phase | Chapter | Status |
 |---|-------|---------|--------|
 | 1 | Terraform foundation | [phase-1-foundation.md](phase-1-foundation.md) | Written |
-| 2 | Secure pipeline | _(pending)_ | Pending |
-| 3 | Prove the vulnerability gate | _(pending)_ | Pending |
-| 4 | RDS + AWS Backup cross-region copy | _(pending)_ | Pending |
-| 5 | DR drill and RTO measurement | _(pending)_ | Pending |
-| 6 | Benchmark/summary + walkthrough script | _(pending)_ | Pending |
+| 2 | Secure pipeline | [phase-2-pipeline.md](phase-2-pipeline.md) | Written |
+| 3 | Prove the vulnerability gate | [phase-3-gate.md](phase-3-gate.md) | Written |
+| 4 | RDS + AWS Backup cross-region copy | [phase-4-dr-foundation.md](phase-4-dr-foundation.md) | Written |
+| 5 | DR drill and RTO measurement | [phase-5-dr-drill.md](phase-5-dr-drill.md) | Written |
+| 6 | End-to-end live-walkthrough script | [walkthrough.md](walkthrough.md) | Written |

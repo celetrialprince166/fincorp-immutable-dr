@@ -68,11 +68,11 @@ Each phase ends with docs + screenshots committed.
 |---|-------|------------------|--------|
 | 0 | Framework: AGENTS.md + skills + agents (scaffolded) | — | ✅ done |
 | 1 | Terraform foundation: network, ECR (IMMUTABLE + scan), CodeArtifact| `provisioning-aws-infra` | ✅ done |
-| 2 | Secure pipeline: CodePipeline + CodeBuild (CodeArtifact deps → build → push immutable → scan) | `securing-supply-chain` | ⬜ |
-| 3 | Prove the gate: introduce a High/Critical dependency, show the build fails | `securing-supply-chain` | ⬜ |
+| 2 | Secure pipeline: CodePipeline + CodeBuild (CodeArtifact deps → build → push immutable → scan) | `securing-supply-chain` | ✅ done |
+| 3 | Prove the gate: introduce a High/Critical dependency, show the build fails | `securing-supply-chain` | ✅ done |
 | 4 | RDS in us-east-1 + AWS Backup daily snapshots + cross-region copy to us-west-2 (DR region forced to eu-west-1 by org SCP) | `disaster-recovery` | ✅ done |
-| 5 | DR drill: delete primary, restore in us-west-2, measure RTO < 30 min | `disaster-recovery` | ⬜ |
-| 6 | Documentation + live-walkthrough script | `writing-tutorials` | ⬜ |
+| 5 | DR drill: delete primary, restore in us-west-2, measure RTO < 30 min | `disaster-recovery` | ✅ done |
+| 6 | Documentation + live-walkthrough script | `writing-tutorials` | ✅ done |
 
 ---
 
