@@ -1,11 +1,7 @@
 # Stage 1: Build environment
 # Base images via the ECR Public mirror (public.ecr.aws) to dodge Docker Hub
 # anonymous pull rate limits (HTTP 429) inside CodeBuild.
-# PHASE 3: intentionally vulnerable base to prove the scan gate — REVERTED after the demo
-# (3.12-slim-bullseye = Debian 11; Debian 11 standard security support ended 2024-08-14,
-#  so it carries known HIGH/CRITICAL OS CVEs that ECR basic (Clair) scanning flags.
-#  Python stays 3.12 so the venv built here still runs in the runtime stage.)
-FROM public.ecr.aws/docker/library/python:3.12-slim-bullseye AS builder
+FROM public.ecr.aws/docker/library/python:3.12-slim AS builder
 
 WORKDIR /app
 
@@ -33,8 +29,7 @@ RUN --mount=type=secret,id=pipconf,target=/etc/pip.conf,required=false \
     dj-database-url
 
 # Stage 2: Runtime environment
-# PHASE 3: intentionally vulnerable base to prove the scan gate — REVERTED after the demo
-FROM public.ecr.aws/docker/library/python:3.12-slim-bullseye AS runtime
+FROM public.ecr.aws/docker/library/python:3.12-slim AS runtime
 
 # Set up environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
