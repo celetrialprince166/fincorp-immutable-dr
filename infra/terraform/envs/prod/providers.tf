@@ -5,8 +5,8 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project   = "fincorp"
-      Env       = "prod"
+      Project   = var.project
+      Env       = var.environment
       ManagedBy = "terraform"
     }
   }
@@ -18,8 +18,8 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project   = "fincorp"
-      Env       = "prod"
+      Project   = var.project
+      Env       = var.environment
       ManagedBy = "terraform"
     }
   }

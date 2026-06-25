@@ -67,7 +67,7 @@ Each phase ends with docs + screenshots committed.
 | # | Phase | Primary skill(s) | Status |
 |---|-------|------------------|--------|
 | 0 | Framework: AGENTS.md + skills + agents (scaffolded) | — | ✅ done |
-| 1 | Terraform foundation: network, ECR (IMMUTABLE + scan), CodeArtifact (npm+pip) | `provisioning-aws-infra` | ⬜ |
+| 1 | Terraform foundation: network, ECR (IMMUTABLE + scan), CodeArtifact| `provisioning-aws-infra` | ✅ done |
 | 2 | Secure pipeline: CodePipeline + CodeBuild (CodeArtifact deps → build → push immutable → scan) | `securing-supply-chain` | ⬜ |
 | 3 | Prove the gate: introduce a High/Critical dependency, show the build fails | `securing-supply-chain` | ⬜ |
 | 4 | RDS in us-east-1 + AWS Backup daily snapshots + cross-region copy to us-west-2 | `disaster-recovery` | ⬜ |

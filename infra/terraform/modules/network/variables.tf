@@ -1,30 +1,19 @@
 variable "name_prefix" {
-  description = "Prefix for resource names (e.g. pongapp-prod)."
+  description = "Prefix for resource names (e.g. fincorp-prod)."
   type        = string
 }
 
 variable "vpc_cidr" {
-  type = string
+  description = "CIDR block for the VPC; also the ingress scope for the RDS security group."
+  type        = string
 }
 
 variable "azs" {
-  type = list(string)
-}
-
-variable "public_subnet_cidrs" {
-  type = list(string)
-}
-
-variable "private_app_subnet_cidrs" {
-  type = list(string)
+  description = "Availability zones for the private data subnets (>= 2 for RDS)."
+  type        = list(string)
 }
 
 variable "private_data_subnet_cidrs" {
-  type = list(string)
-}
-
-variable "cluster_name" {
-  description = "EKS cluster name used for Kubernetes subnet/VPC discovery tags."
-  type        = string
-  default     = "pongapp-prod"
+  description = "CIDR blocks for the private data subnets, one per AZ in var.azs."
+  type        = list(string)
 }

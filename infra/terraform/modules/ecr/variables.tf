@@ -4,9 +4,9 @@ variable "project" {
 }
 
 variable "repositories" {
-  description = "ECR repository short names to create."
+  description = "ECR repository short names to create (named <project>-<repo>). This lab builds a single application image, but the module stays generic via list + for_each for reuse."
   type        = list(string)
-  default     = ["frontend", "backend"]
+  default     = ["app"]
 }
 
 variable "max_image_count" {

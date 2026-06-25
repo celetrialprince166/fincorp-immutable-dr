@@ -5,19 +5,31 @@ locals {
 # ===========================================================================
 # Foundation (Phase 1) — primary region (default provider = us-east-1)
 # ===========================================================================
-# module "network" {
-#   source = "../../modules/network"
-#   ...
-# }
-#
-# module "ecr" {
-#   source = "../../modules/ecr"
-#   # Phase 1: set image_tag_mutability = "IMMUTABLE" (scan_on_push already true).
-# }
-#
-# module "codeartifact" {
-#   source = "../../modules/codeartifact"   # npm + pip upstream proxies
-# }
+
+# Lean, RDS-only VPC: private data subnets across 2 AZs + RDS SG + DB subnet
+# group. No IGW/NAT (RDS is private with no egress need) — see module header.
+module "network" {
+  source = "../../modules/network"
+
+  name_prefix               = local.name_prefix
+  vpc_cidr                  = var.vpc_cidr
+  azs                       = var.azs
+  private_data_subnet_cidrs = var.private_data_subnet_cidrs
+}
+
+# Immutable, scanned image store. IMMUTABLE tags + scan-on-push (AGENTS.md §2).
+module "ecr" {
+  source = "../../modules/ecr"
+
+  project = var.project
+}
+
+# CodeArtifact: the single controlled npm + pip proxy the build pulls through.
+module "codeartifact" {
+  source = "../../modules/codeartifact"
+
+  project = var.project
+}
 
 # ===========================================================================
 # Objective 1 — secure artifact pipeline (Phases 2-3)
@@ -32,7 +44,7 @@ locals {
 #
 # module "rds" {
 #   source = "../../modules/rds"
-#   # primary RDS in us-east-1 (default provider)
+#   # primary RDS in us-east-1 (default provider), wired to module.network
 # }
 #
 # module "backup" {
