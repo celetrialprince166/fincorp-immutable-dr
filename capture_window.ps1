@@ -48,7 +48,9 @@ public static class Win {
     public static List<IntPtr> Find(string match) {
         var hits = new List<IntPtr>();
         EnumWindows((h, l) => {
-            if (!IsWindowVisible(h)) return true;
+            // NOTE: do not skip non-visible windows — the Claude extension's
+            // automation tab can live in a background/minimized Chrome window.
+            // We match by title and ShowWindow(SW_RESTORE)+SetForeground below.
             int len = GetWindowTextLength(h);
             if (len == 0) return true;
             var sb = new StringBuilder(len + 1);
