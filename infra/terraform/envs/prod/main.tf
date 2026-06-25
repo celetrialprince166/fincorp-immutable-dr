@@ -120,17 +120,29 @@ module "codepipeline" {
 # ===========================================================================
 # Objective 2 — cross-region disaster recovery (Phases 4-5)
 # ===========================================================================
-# module "secrets" { source = "../../modules/secrets" }           # RDS master password
-#
-# module "rds" {
-#   source = "../../modules/rds"
-#   # primary RDS in us-east-1 (default provider), wired to module.network
-# }
-#
-# module "backup" {
-#   source = "../../modules/backup"
-#   providers = {
-#     aws      = aws        # us-east-1 vault + plan
-#     aws.usw2 = aws.usw2   # us-west-2 destination vault (cross-region copy)
-#   }
-# }
+# NOTE on secrets: we deliberately do NOT use module.secrets for the RDS master
+# password. module.rds sets manage_master_user_password = true, so RDS creates
+# and rotates the master credential in Secrets Manager (KMS-encrypted) itself.
+# The password value therefore never enters Terraform code or state — strictly
+# better than a self-managed random_password whose .result lands in state.
+
+# Primary RDS PostgreSQL in us-east-1 (default provider), wired to module.network.
+module "rds" {
+  source = "../../modules/rds"
+
+  name_prefix          = local.name_prefix
+  db_subnet_group_name = module.network.db_subnet_group_name
+  rds_sg_id            = module.network.rds_sg_id
+}
+
+# AWS Backup: daily snapshot in us-east-1 + cross-region copy to us-west-2.
+module "backup" {
+  source = "../../modules/backup"
+  providers = {
+    aws      = aws      # us-east-1 vault + plan + selection + service role
+    aws.usw2 = aws.usw2 # us-west-2 destination vault (cross-region copy)
+  }
+
+  name_prefix      = local.name_prefix
+  rds_instance_arn = module.rds.arn
+}

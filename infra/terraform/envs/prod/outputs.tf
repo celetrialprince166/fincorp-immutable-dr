@@ -75,3 +75,57 @@ output "github_connection_status" {
   description = "Connection status. Must become AVAILABLE (manual OAuth authorize) before the pipeline can pull source."
   value       = module.codepipeline.connection_status
 }
+
+# ---------------------------------------------------------------------------
+# Phase 4 outputs — disaster-recovery foundation (RDS + AWS Backup).
+# ---------------------------------------------------------------------------
+
+output "rds_instance_id" {
+  description = "Primary RDS instance identifier (us-east-1)."
+  value       = module.rds.db_instance_id
+}
+
+output "rds_endpoint" {
+  description = "Primary RDS endpoint (host:port)."
+  value       = module.rds.endpoint
+}
+
+output "rds_arn" {
+  description = "Primary RDS instance ARN (AWS Backup selection target)."
+  value       = module.rds.arn
+}
+
+output "rds_master_secret_arn" {
+  description = "ARN of the RDS-managed master-user secret (Secrets Manager). ARN only — never the value."
+  value       = module.rds.master_user_secret_arn
+}
+
+output "backup_vault_use1_arn" {
+  description = "us-east-1 source backup vault ARN."
+  value       = module.backup.primary_vault_arn
+}
+
+output "backup_vault_usw2_arn" {
+  description = "us-west-2 destination (cross-region copy) backup vault ARN."
+  value       = module.backup.dr_vault_arn
+}
+
+output "backup_vault_use1_name" {
+  description = "us-east-1 source backup vault name."
+  value       = module.backup.primary_vault_name
+}
+
+output "backup_vault_usw2_name" {
+  description = "us-west-2 destination backup vault name."
+  value       = module.backup.dr_vault_name
+}
+
+output "backup_plan_id" {
+  description = "AWS Backup plan id (daily rule + cross-region copy_action)."
+  value       = module.backup.plan_id
+}
+
+output "backup_role_arn" {
+  description = "AWS Backup service role ARN (used for on-demand jobs too)."
+  value       = module.backup.backup_role_arn
+}

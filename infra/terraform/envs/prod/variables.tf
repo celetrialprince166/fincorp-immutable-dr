@@ -4,10 +4,16 @@ variable "primary_region" {
   default     = "us-east-1"
 }
 
+# DR region. NOTE: the AWS Organization SCP (p-339lo1q0) explicitly DENIES AWS
+# Backup write actions (CreateBackupVault, etc.) in us-west-2 and all other US/CA
+# regions; it permits only us-east-1 and EU regions (eu-west-1, eu-central-1).
+# We therefore use eu-west-1 as the DR region — a genuinely distinct geography,
+# which is an even stronger cross-region DR demonstration. The aws.usw2 provider
+# alias name is retained for minimal churn but now points at this region.
 variable "dr_region" {
-  description = "Disaster-recovery region (cross-region backup copy + restore)."
+  description = "Disaster-recovery region (cross-region backup copy + restore). Constrained to an SCP-allowed region."
   type        = string
-  default     = "us-west-2"
+  default     = "eu-west-1"
 }
 
 variable "project" {

@@ -1,5 +1,5 @@
 variable "name_prefix" {
-  description = "Prefix for the DB identifier (e.g. pongapp-prod)."
+  description = "Prefix for the DB identifier (e.g. fincorp-prod)."
   type        = string
 }
 
@@ -16,7 +16,7 @@ variable "instance_class" {
 }
 
 variable "allocated_storage" {
-  description = "Allocated storage in GB."
+  description = "Allocated storage in GB (gp3)."
   type        = number
   default     = 20
 }
@@ -24,19 +24,13 @@ variable "allocated_storage" {
 variable "db_name" {
   description = "Initial database name."
   type        = string
-  default     = "table_tennis_db"
+  default     = "fincorp_db"
 }
 
 variable "db_username" {
-  description = "Master username."
+  description = "Master username (password is RDS-managed in Secrets Manager)."
   type        = string
-  default     = "ttl_user"
-}
-
-variable "db_password" {
-  description = "Master password (from the secrets module)."
-  type        = string
-  sensitive   = true
+  default     = "fincorp_admin"
 }
 
 variable "db_subnet_group_name" {
@@ -50,7 +44,19 @@ variable "rds_sg_id" {
 }
 
 variable "multi_az" {
-  description = "Enable Multi-AZ (off by default for cost)."
+  description = "Enable Multi-AZ (off by default for cost; DR is cross-region instead)."
   type        = bool
   default     = false
+}
+
+variable "backup_retention_period" {
+  description = "Automated backup retention in days (RDS native, separate from AWS Backup)."
+  type        = number
+  default     = 1
+}
+
+variable "backup_tag_value" {
+  description = "Value of the Backup tag the AWS Backup selection targets."
+  type        = string
+  default     = "fincorp-daily"
 }
