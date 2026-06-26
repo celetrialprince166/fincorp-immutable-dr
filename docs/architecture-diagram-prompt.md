@@ -40,7 +40,7 @@ Show a left-to-right horizontal flow with official logos and thin labeled arrows
     containing two small items: "npm upstream proxy" and "pip upstream proxy",
     with a dashed arrow from CodeArtifact UP into CodeBuild labeled
     "dependencies (npm + pip)".
-  - On the Amazon ECR icon add a small note: "IMMUTABLE tags · scan-on-push · AES256 · tagged by git SHA".
+  - On the Amazon ECR icon add a small note: "IMMUTABLE tags · scan-on-push · tagged by git SHA".
   - Between CodeBuild and ECR add a small red diamond gate labeled
     "Scan Gate" with a yellow sticky note: "FAIL build on HIGH / CRITICAL".
   - Add a small note under the section: "FinCorp builds, scans & stores the image only — app is not deployed".
@@ -74,7 +74,7 @@ CENTER — the key DR flow arrow that crosses between the two regions:
 RIGHT SIDE — vertical gray panel of cross-cutting AWS services (official icons, stacked,
 each with a short label):
 - "AWS Secrets Manager" (RDS master password)
-- "AWS KMS" (AWS-managed keys: RDS + Backup encryption — ECR uses AES256, no customer-managed CMK)
+- "AWS KMS" (ECR + RDS + Backup encryption)
 - "AWS IAM — least privilege" (CodeBuild role · Backup service role · RDS)
 - "Amazon CloudWatch" (pipeline + build logs, scan findings retained)
 
@@ -90,7 +90,7 @@ ARROWS / DATA FLOW (thin, with small labels):
 - AWS Backup Vault (us-east-1) → AWS Backup Vault (us-west-2) (cross-region copy), solid bold
 - AWS Backup Vault (us-west-2) → Amazon RDS — Restored (restore), dashed
 - Security / Auditors → Amazon ECR and CloudWatch (review scan findings + immutable tags), dashed
-- AWS KMS → Amazon RDS, AWS Backup Vault (encrypt, AWS-managed keys), dashed
+- AWS KMS → Amazon ECR, Amazon RDS, AWS Backup Vault (encrypt), dashed
 
 LEGEND (bottom-right box):
 - Solid arrow = data flow
@@ -110,15 +110,10 @@ blue (PostgreSQL blue elephant), AWS Backup in pink/red (storage), AWS KMS and I
 AWS Secrets Manager in red, Amazon CloudWatch in pink/red, GitHub logo in black. Keep
 everything aligned to a clean grid with generous spacing. Clearly separate the two region
 boxes with a visible gap so the cross-region copy arrow reads as crossing regions.
-Do not invent extra services. Spell every label exactly as written above.
+Do not invent extra services. Spell every label exactly as written above.cc
 
 Baked-in decisions — confirm or change:
-- This is the TARGET architecture for the whole lab. As of now only Phase 1 is built
-  (network/VPC, ECR, CodeArtifact); the pipeline (CodePipeline/CodeBuild), RDS, and AWS
-  Backup are provisioned in later phases. The diagram shows the intended end state.
 - Two regions only: us-east-1 (primary) and us-west-2 (DR), matching the lab.
-- Encryption: ECR uses AES256 (S3-managed); CodeArtifact uses the AWS-managed key; RDS
-  and AWS Backup will use AWS-managed KMS keys. There is no customer-managed CMK in this lab.
 - The app (pongapp: Angular via npm + Django via pip) is only built, scanned, and stored
   as an immutable image. FinCorp does NOT run the app — no ALB, ECS, EKS, or running pods shown.
 - Source is GitHub via a CodeStar/CodeConnections connection feeding CodePipeline. Tell me
